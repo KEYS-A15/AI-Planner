@@ -1,11 +1,11 @@
 move_forward:
-  description: >
+  description: |
     Move the agent in a specific direction at a specific speed.
     The direction is represented by an integer:
-    - 0 = forward
-    - 1 = right
-    - 2 = left
-    - 3 = backwards
+    -> 0 = walking forward
+    -> 1 = turning right and walking straight
+    -> 2 = turning left and walking straight
+    -> 3 = walking backwards
     speed is an integer from 1 (slow) to 10 (fast)
   parameters:
     direction: int

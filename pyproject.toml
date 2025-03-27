@@ -12,7 +12,8 @@ dependencies = [
     "langchain-ollama",
     "langchain",
     "torch",
-    "transformers"
+    "transformers",
+    "python-dotenv"
 ]
 
 [build-system]
