@@ -3,67 +3,86 @@ import os
 from dotenv import load_dotenv
 from langchain.prompts import PromptTemplate
 from langchain_ollama import OllamaLLM
-from langchain_core.runnables import RunnablePassthrough
+from app.parser import FunctionPool
 
 load_dotenv()
 
-def load_function_pool(path : str = "app/function_pool.yaml") -> dict:
-    with open(path, "r") as file:
-        return yaml.safe_load(file)
-    
-def function_pool_formatter(function_pool : dict[str, dict]) -> str:
-    output = ""
-    for name, meta in function_pool.items():
-        params = meta.get("parameters", {})
-        params_str = ", ".join([f"{k}: {v}" for k, v in params.items()]) if params else "None"
-        desc = meta["description"].strip().replace("\n", " ")
-        output += f"- {name}({params_str}) : {desc}"
-    return output
+class PromptBuilder:
+    def __init__(self, path: str = "app/function_pool.yaml"):
+        self.function_pool = self.load_function_pool(path)
+        self.function_description = self.function_pool_formatter(self.function_pool)
 
-def build_prompt_template(function_pool : dict[str, dict]) -> PromptTemplate:
-    function_description = function_pool_formatter(function_pool)
+    def load_function_pool(self, path : str = "app/function_pool.yaml") -> dict:
+        with open(path, "r") as file:
+            return yaml.safe_load(file)
+        
+    def function_pool_formatter(self, function_pool : dict[str, dict]) -> str:
+        output = ""
+        for name, meta in function_pool.items():
+            params = meta.get("parameters", {})
+            params_str = ", ".join([f"{k}: {v}" for k, v in params.items()]) if params else "None"
+            desc = meta["description"].strip().replace("\n", " ")
+            output += f"- {name}({params_str}) : {desc}"
+        return output
 
-    template = f"""
-    You are an intelligent planning assistant. Your job is to convert high level natural language tasks into a sequence of low-level function calls using the available API below.
+    def build_prompt_template(self) -> PromptTemplate:
 
-    Only use the following function:
-    {function_description}
+        template = f"""
+        You are an intelligent planning assistant. Your job is to convert high level natural language tasks into a sequence of low-level function calls using the available API below.
 
-    Do not use any other functions apart from provided list, and never create new functions.
+        Only use the following function:
+        {self.function_description}
 
-    Example:
-    Task: Buy a Coffee and return
-    Steps:
-    1. move_forward(direction=0, speed=5)    #Move forward to the shop
-    2. pay(amount=10)                        #Pay for the coffee
-    3. pick_up(item="coffee")                #Pick up the coffee
-    4. turn_back()                           #Turn back and return
-    5. move_forward(direction=0, speed=5)    #Move forward to the starting point
+        Instructions:
+        - Do not use any other functions apart from provided list, and never create new functions. 
+        - Do not hallucinate or make up any functions such as move_right or move_left.
+        - Any Directional movement should use move_forward function with direction and speed parameters.
+        - To turn left or right do not turn back instead use move_forward directly
 
-    Only output the function call. The output format should be in JSON format follows:
-        "1" "move_forward(direction=0, speed=5)",
-        "2" "pay(amount=10)",
-        "3" "pick_up(item='coffee')",
-        "4" "turn_back()",
-        "5" "move_forward(direction=0, speed=5)"
-        ... and so on
-    Do not explain your reasoning or include extra text.
+        Example:
+        Task: Buy a Coffee and return
+        Steps:
+        1. move_forward(direction=0, speed=5)    #Move forward to the shop
+        2. pay(amount=10)                        #Pay for the coffee
+        3. pick_up(item="coffee")                #Pick up the coffee
+        4. turn_back()                           #Turn back and return
+        5. move_forward(direction=0, speed=5)    #Move forward to the starting point
 
-    Now convert the following task into a JSON sequence of function calls:
-    Task: {{task}}
-    Steps (JSON):
-    ```json
-    ```
-    """
-    return PromptTemplate(input_variables=["task"], template=template)
+        Only output the function call. The output format should be in JSON format follows:
+            "1" "move_forward(direction=0, speed=5)",
+            "2" "pay(amount=10)",
+            "3" "pick_up(item='coffee')",
+            "4" "turn_back()",
+            "5" "move_forward(direction=0, speed=5)"
+            ... and so on
+        Do not explain your reasoning or include extra text.
+
+        Now convert the following task into a JSON sequence of function calls:
+        Task: {{task}}
+        Steps (JSON):
+        ```json
+        ```
+        """
+        return PromptTemplate(input_variables=["task"], template=template)
 
 
 if __name__ == "__main__":
-    function_pool = load_function_pool()
-    prompt = build_prompt_template(function_pool)
+    import json
+    prompt_builder = PromptBuilder()
+    function_pool = prompt_builder.load_function_pool()
+    prompt = prompt_builder.build_prompt_template()
+    function_desc = prompt_builder.function_pool_formatter(function_pool)
 
-    llm = OllamaLLM(base_url="192.168.0.15", model="phi3", format="json", temperature=float(os.environ["TEMPERATURE"]), top_k=2, top_p=0.25)
+    llm = OllamaLLM(model="mistral", format="json", temperature=0.2, top_k=10, top_p=0.95)
     chain = prompt | llm
 
-    response = chain.invoke({"task": "Buy a free coffee and go to the park to the right"})
+    response = chain.invoke({"task": "Take a right and walk for a while and then run back"})
     print(response, "\n\n")
+
+    json_response = json.loads(response)    
+    function_watcher = FunctionPool()
+    invalid_functions = function_watcher.validator(json_response)
+    if invalid_functions:
+        print(f"Invalid functions detected: {invalid_functions}")
+    else:
+        print("No invalid functions detected.")

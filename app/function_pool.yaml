@@ -1,6 +1,6 @@
 move_forward:
   description: |
-    Move the agent in a specific direction at a specific speed.
+    Move the agent in a specific direction at a specific speed. Any directional movement should use this to specift right or left turn and move ahead
     The direction is represented by an integer:
     -> 0 = walking forward
     -> 1 = turning right and walking straight

@@ -1,2 +1,4 @@
 planner/
 /*.egg-info/*
+.env
+app/__pycache__/
