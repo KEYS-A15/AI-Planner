@@ -1,6 +1,8 @@
 import json
 import typer
 import questionary
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from app.prompt_builder import PromptBuilder
 from app.llm_integration import get_llm_chain
 from app.parser import FunctionPool
@@ -37,7 +39,6 @@ def run(
             print("All functions are valid.")
     except Exception as e:
         print(f"Error parsing response: {e}")
-
 
 if __name__ == "__main__":
     cli()

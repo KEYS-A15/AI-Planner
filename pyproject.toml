@@ -11,12 +11,20 @@ requires-python = ">=3.9"
 dependencies = [
     "langchain-ollama",
     "langchain",
-    "torch",
     "transformers",
     "python-dotenv",
     "typer",
     "questionary",
+    "pydantic",
+    "fastapi",
+    "uvicorn",
+    "datasets",
+    "transformers",
+    "peft"
 ]
+
+[tool.setuptools]
+packages = ["app", "distill"]
 
 [build-system]
 requires = ["setuptools", "wheel"]

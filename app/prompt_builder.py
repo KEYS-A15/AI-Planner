@@ -64,25 +64,3 @@ class PromptBuilder:
         ```
         """
         return PromptTemplate(input_variables=["task"], template=template)
-
-
-if __name__ == "__main__":
-    import json
-    prompt_builder = PromptBuilder()
-    function_pool = prompt_builder.load_function_pool()
-    prompt = prompt_builder.build_prompt_template()
-    function_desc = prompt_builder.function_pool_formatter(function_pool)
-
-    llm = OllamaLLM(model="mistral", format="json", temperature=0.2, top_k=10, top_p=0.95)
-    chain = prompt | llm
-
-    response = chain.invoke({"task": "Take a right and walk for a while and then run back"})
-    print(response, "\n\n")
-
-    json_response = json.loads(response)    
-    function_watcher = FunctionPool()
-    invalid_functions = function_watcher.validator(json_response)
-    if invalid_functions:
-        print(f"Invalid functions detected: {invalid_functions}")
-    else:
-        print("No invalid functions detected.")
